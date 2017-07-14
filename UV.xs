@@ -399,10 +399,10 @@ static void handle_timer_cb(uv_timer_t* handle)
 }
 
 /* Request functions */
-static SV * request_bless(uv_req_t *r)
+static SV * request_bless(uv_req_t *req)
 {
     SV *rv;
-    handle_data_t *data_ptr = r->data;
+    request_data_t *data_ptr = uv_req_data(req);
 
     if (SvOBJECT(data_ptr->self)) {
         rv = newRV_inc(data_ptr->self);
@@ -439,6 +439,8 @@ static request_data_t* request_data_new(const uv_req_type type)
     if (NULL == data_ptr) {
         croak("Cannot allocate space for request data.");
     }
+
+    data_ptr->self = NULL;
 
     /* set the stash */
     data_ptr->stash = request_data_stash(type);
@@ -482,6 +484,9 @@ static uv_req_t* request_new(const uv_req_type type)
     size_t size = uv_req_size(type);
 
     self = NEWSV(0, size);
+    if (NULL == self) {
+        croak("Unable to allocate space for new uv_req_t");
+    }
     SvPOK_only(self);
     SvCUR_set(self, size);
     req = (uv_req_t *) SvPVX(self);
@@ -499,19 +504,36 @@ static uv_req_t* request_new(const uv_req_type type)
 static void request_on(uv_req_t *req, const char *name, SV *cb)
 {
     SV *callback = NULL;
-    request_data_t *data_ptr;
-
-    if (NULL == req) return;
-    data_ptr = uv_req_data(req);
+    request_data_t *data_ptr = uv_req_data(req);
     if (NULL == data_ptr) return;
 
     callback = cb ? s_get_cv_croak(cb) : NULL;
 
     /* find out which callback to set */
-    if (0 == strcmp(name, "unknown")) {
+    if (0 == strcmp(name, "after_work")) {
+        /* clear the callback's current value first */
+        if (NULL != data_ptr->after_work_cb) {
+            SvREFCNT_dec(data_ptr->after_work_cb);
+            data_ptr->after_work_cb = NULL;
+        }
+        /* set the CB */
+        if (NULL != callback) {
+            data_ptr->after_work_cb = SvREFCNT_inc(callback);
+        }
+    }
+    else if (0 == strcmp(name, "work")) {
+        /* clear the callback's current value first */
+        if (NULL != data_ptr->work_cb) {
+            SvREFCNT_dec(data_ptr->work_cb);
+            data_ptr->work_cb = NULL;
+        }
+        /* set the CB */
+        if (NULL != callback) {
+            data_ptr->work_cb = SvREFCNT_inc(callback);
+        }
     }
     else {
-        croak("Invalid event name (%s)", name);
+        croak("Invalid request event name (%s)", name);
     }
 }
 
@@ -863,8 +885,8 @@ SV * uv_work_new(SV *class)
     CODE:
     PERL_UNUSED_VAR(class);
     uv_work_t *req = (uv_work_t *)request_new(UV_WORK);
-
     RETVAL = request_bless((uv_req_t *)req);
+    sv_dump(RETVAL);
     OUTPUT:
     RETVAL
 
@@ -879,13 +901,18 @@ SV *uv_work_loop(uv_work_t *req)
 
 int uv_work_queue_work(uv_work_t *req, uv_loop_t *loop = uvapi.default_loop, SV *work_cb=NULL, SV *after_work_cb=NULL)
     CODE:
+        if (NULL == loop) {
+            loop = uvapi.default_loop;
+        }
         if (NULL != work_cb) {
             request_on((uv_req_t *)req, "work", work_cb);
         }
         if (NULL != after_work_cb) {
             request_on((uv_req_t *)req, "after_work", after_work_cb);
         }
+        warn("about to try to queue work");
         RETVAL = uv_queue_work(loop, req, request_work_cb, request_after_work_cb);
+        warn("Work queued!");
     OUTPUT:
     RETVAL
 
