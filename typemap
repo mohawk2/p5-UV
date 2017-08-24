@@ -4,33 +4,26 @@ uv_loop_option      T_RUN_UV
 int64_t             T_INT64
 uint64_t            T_UINT64
 
-uv_loop_t *         T_LOOP
-const uv_loop_t *   T_LOOP
+UV_Loop             T_PTROBJ
+UV::Loop            T_PTROBJ
 
-uv_handle_t *       T_HANDLE
-uv_check_t *        T_HANDLE
-uv_idle_t *         T_HANDLE
-uv_poll_t *         T_HANDLE
-uv_prepare_t *      T_HANDLE
-uv_timer_t *        T_HANDLE
-const uv_timer_t *  T_HANDLE
+UV_Check            T_PTROBJ
+UV::Check           T_PTROBJ
+UV_Handle           T_PTROBJ
+UV::Handle          T_PTROBJ
+UV_Idle             T_PTROBJ
+UV::Idle            T_PTROBJ
+UV_Poll             T_PTROBJ
+UV::Poll            T_PTROBJ
+UV_Prepare          T_PTROBJ
+UV::Prepare         T_PTROBJ
+UV_Timer            T_PTROBJ
+UV::Timer           T_PTROBJ
 
 INPUT
 
 T_RUN_UV
     $var = SvIV($arg)
-
-T_LOOP
-    if (!(SvROK ($arg) && SvOBJECT (SvRV ($arg)) && (SvSTASH (SvRV ($arg)) == stash_loop || sv_derived_from ($arg, \"UV::Loop\"))))
-        croak (\"object is not of type UV::Loop\");
-    $var = ($type)SvIVX (SvRV ($arg));
-
-T_HANDLE
-    if (!(SvROK ($arg) && SvOBJECT (SvRV ($arg))
-      && (SvSTASH (SvRV ($arg)) == stash_" . ($type =~ /uv_([^_\s]+)/, "$1") . "
-      || sv_derived_from ($arg, \"UV::" . ($type =~ /uv_([^_\s]+)/, ucfirst "$1") . "\"))))
-         croak (\"object is not of type UV::" . ($type =~ /uv_([^_\s]+)/, ucfirst "$1") . "\");
-    $var = ($type)SvPVX (SvRV ($arg));
 
 T_INT64
     $var = SvI64($arg);
@@ -39,9 +32,6 @@ T_UINT64
     $var = SvU64($arg);
 
 OUTPUT
-
-T_HANDLE
-    $arg = handle_bless((uv_handle_t *)$var);
 
 T_INT64
     $arg = newSVi64($var);

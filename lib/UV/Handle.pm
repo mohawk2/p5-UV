@@ -15,6 +15,13 @@ our @EXPORT_OK  = qw(
     UV_STREAM UV_TCP UV_TIMER UV_TTY UV_UDP UV_SIGNAL UV_FILE
 );
 
+sub data {
+    my $self = shift;
+    return $self->_get_data() unless @_;
+    $self->_set_data(@_);
+    return $self;
+}
+
 1;
 
 __END__

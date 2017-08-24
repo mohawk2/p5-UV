@@ -51,10 +51,14 @@ our @EXPORT_OK  = qw(
 @UV::Signal::ISA =
 @UV::File::ISA =
     "UV::Handle";
+
+sub default_loop {
+    require UV::Loop;
+    return UV::Loop->new(1);
+}
+
 1;
 
-# load up the default loop
-default_loop() or die 'UV: cannot initialise libUV backend.';
 
 __END__
 
